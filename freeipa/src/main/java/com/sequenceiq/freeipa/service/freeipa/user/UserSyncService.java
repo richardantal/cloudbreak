@@ -224,7 +224,7 @@ public class UserSyncService {
             boolean fullSync) {
         try {
             MDCBuilder.addOperationId(operationId);
-            asyncTaskExecutor.submit(() -> internalSynchronizeUsers(operationId, accountId, actorCrn, stacks, userSyncFilter, fullSync));
+            asyncTaskExecutor.submit(() -> internalSynchronizeUsers(operationId, accountId, stacks, userSyncFilter, fullSync));
         } finally {
             MDCBuilder.removeOperationId();
         }
@@ -248,8 +248,8 @@ public class UserSyncService {
         }
     }
 
-    private void internalSynchronizeUsers(String operationId, String accountId, String actorCrn, List<Stack> stacks, UserSyncRequestFilter userSyncFilter,
-            boolean fullSync) {
+    private void internalSynchronizeUsers(String operationId, String accountId, List<Stack> stacks, UserSyncRequestFilter userSyncFilter,
+        boolean fullSync) {
         tryWithOperationCleanup(operationId, accountId, () -> {
             Set<String> environmentCrns = stacks.stream().map(Stack::getEnvironmentCrn).collect(Collectors.toSet());
 
@@ -268,8 +268,7 @@ public class UserSyncService {
                 LogEvent logRetrieveUmsEvent = fullSync ? LogEvent.RETRIEVE_FULL_UMS_STATE : LogEvent.RETRIEVE_PARTIAL_UMS_STATE;
                 LOGGER.debug("Starting {} for environments {} ...", logRetrieveUmsEvent, environmentCrns);
                 Map<String, UmsUsersState> envToUmsStateMap = umsUsersStateProviderDispatcher
-                        .getEnvToUmsUsersStateMap(accountId, actorCrn, environmentCrns, userSyncFilter.getUserCrnFilter(),
-                                userSyncFilter.getMachineUserCrnFilter(), requestId);
+                        .getEnvToUmsUsersStateMap(accountId, environmentCrns, requestId);
                 LOGGER.debug("Finished {}.", logRetrieveUmsEvent);
                 statusFutures = stacks.stream()
                         .collect(Collectors.toMap(Stack::getEnvironmentCrn,
@@ -323,7 +322,7 @@ public class UserSyncService {
     private Future<SyncStatusDetail> asyncSynchronizeStack(Stack stack, UmsUsersState umsUsersState, UmsEventGenerationIds umsEventGenerationIds,
             boolean fullSync, String operationId, String accountId) {
         return asyncTaskExecutor.submit(() -> {
-            SyncStatusDetail statusDetail = internalSynchronizeStack(stack, umsUsersState, fullSync);
+            SyncStatusDetail statusDetail = internalSynchronizeStack(stack, umsUsersState);
             if (fullSync && statusDetail.getStatus() == SynchronizationStatus.COMPLETED) {
                 UserSyncStatus userSyncStatus = userSyncStatusService.getOrCreateForStack(stack);
                 userSyncStatus.setUmsEventGenerationIds(new Json(umsEventGenerationIds));
@@ -339,14 +338,14 @@ public class UserSyncService {
         return asyncTaskExecutor.submit(() -> internalSynchronizeStackForDeleteUser(stack, deletedWorkloadUser, false));
     }
 
-    private SyncStatusDetail internalSynchronizeStack(Stack stack, UmsUsersState umsUsersState, boolean fullSync) {
+    private SyncStatusDetail internalSynchronizeStack(Stack stack, UmsUsersState umsUsersState) {
         MDCBuilder.buildMdcContext(stack);
         String environmentCrn = stack.getEnvironmentCrn();
         Multimap<String, String> warnings = ArrayListMultimap.create();
         try {
             FreeIpaClient freeIpaClient = freeIpaClientFactory.getFreeIpaClientForStack(stack);
             String accountId = Crn.fromString(environmentCrn).getAccountId();
-            UserSyncOptions options = new UserSyncOptions(fullSync, entitlementService.isFmsToFreeipaBatchCallEnabled(accountId),
+            UserSyncOptions options = new UserSyncOptions(entitlementService.isFmsToFreeipaBatchCallEnabled(accountId),
                     entitlementService.usersyncCredentialsUpdateOptimizationEnabled(accountId));
             LOGGER.info("Credentials update optimization is{} enabled for account {}",
                     options.isCredentialsUpdateOptimizationEnabled() ? "" : " not", accountId);
@@ -357,7 +356,7 @@ public class UserSyncService {
             retrySyncIfBatchCallHasWarnings(stack, umsUsersState, warnings, options, freeIpaClient, usersStateDifferenceBeforeSync);
 
             // TODO For now we only sync cloud ids during full sync. We should eventually allow more granular syncs (actor level and group level sync).
-            if (options.isFullSync() && entitlementService.cloudIdentityMappingEnabled(stack.getAccountId())) {
+            if (entitlementService.cloudIdentityMappingEnabled(stack.getAccountId())) {
                 LOGGER.debug("Starting {} ...", LogEvent.SYNC_CLOUD_IDENTITIES);
                 cloudIdentitySyncService.syncCloudIdentities(stack, umsUsersState, warnings::put);
                 LOGGER.debug("Finished {}.", LogEvent.SYNC_CLOUD_IDENTITIES);
@@ -373,7 +372,7 @@ public class UserSyncService {
     private void retrySyncIfBatchCallHasWarnings(Stack stack, UmsUsersState umsUsersState, Multimap<String, String> warnings,
             UserSyncOptions options, FreeIpaClient freeIpaClient, UsersStateDifference usersStateDifferenceBeforeSync)
             throws FreeIpaClientException {
-        if (options.isFullSync() && !warnings.isEmpty() && options.isFmsToFreeIpaBatchCallEnabled()) {
+        if (!warnings.isEmpty() && options.isFmsToFreeIpaBatchCallEnabled()) {
             UsersStateDifference usersStateDifferenceAfterSync = compareUmsAndFreeIpa(umsUsersState, options, freeIpaClient);
             if (usersStateDifferenceChanged(usersStateDifferenceBeforeSync, usersStateDifferenceAfterSync)) {
                 Multimap<String, String> retryWarnings = ArrayListMultimap.create();
@@ -400,9 +399,9 @@ public class UserSyncService {
 
     private UsersStateDifference compareUmsAndFreeIpa(UmsUsersState umsUsersState, UserSyncOptions options,
             FreeIpaClient freeIpaClient) throws FreeIpaClientException {
-        LogEvent logEvent = options.isFullSync() ? LogEvent.RETRIEVE_FULL_IPA_STATE : LogEvent.RETRIEVE_PARTIAL_IPA_STATE;
+        LogEvent logEvent = LogEvent.RETRIEVE_FULL_IPA_STATE;
         LOGGER.debug("Starting {} ...", logEvent);
-        UsersState ipaUsersState = getIpaUserState(freeIpaClient, umsUsersState, options.isFullSync());
+        UsersState ipaUsersState = getIpaUserState(freeIpaClient);
         LOGGER.debug("Finished {}, found {} users and {} groups.", logEvent,
                 ipaUsersState.getUsers().size(), ipaUsersState.getGroups().size());
 
@@ -478,11 +477,9 @@ public class UserSyncService {
     }
 
     @VisibleForTesting
-    UsersState getIpaUserState(FreeIpaClient freeIpaClient, UmsUsersState umsUsersState, boolean fullSync)
+    UsersState getIpaUserState(FreeIpaClient freeIpaClient)
             throws FreeIpaClientException {
-        return fullSync ? freeIpaUsersStateProvider.getUsersState(freeIpaClient) :
-                freeIpaUsersStateProvider.getFilteredFreeIpaState(
-                        freeIpaClient, umsUsersState.getRequestedWorkloadUsernames());
+        return freeIpaUsersStateProvider.getUsersState(freeIpaClient);
     }
 
     @VisibleForTesting

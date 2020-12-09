@@ -49,10 +49,13 @@ import com.sequenceiq.freeipa.entity.UserSyncStatus;
 import com.sequenceiq.freeipa.service.freeipa.FreeIpaClientFactory;
 import com.sequenceiq.freeipa.service.freeipa.user.model.FmsGroup;
 import com.sequenceiq.freeipa.service.freeipa.user.model.FmsUser;
-import com.sequenceiq.freeipa.service.freeipa.user.model.UmsUsersState;
 import com.sequenceiq.freeipa.service.freeipa.user.model.UsersStateDifference;
 import com.sequenceiq.freeipa.service.operation.OperationService;
 import com.sequenceiq.freeipa.service.stack.StackService;
+
+import io.opentracing.Span;
+import io.opentracing.SpanContext;
+import io.opentracing.Tracer;
 
 @ExtendWith(MockitoExtension.class)
 class UserSyncServiceTest {
@@ -106,24 +109,13 @@ class UserSyncServiceTest {
 
     @Test
     void testFullSyncRetrievesFullIpaState() throws Exception {
-        UmsUsersState umsUsersState = mock(UmsUsersState.class);
-        underTest.getIpaUserState(freeIpaClient, umsUsersState, true);
+        underTest.getIpaUserState(freeIpaClient);
         verify(freeIpaUsersStateProvider).getUsersState(any());
-    }
-
-    @Test
-    void testFilteredSyncRetrievesFilteredIpaState() throws Exception {
-        UmsUsersState umsUsersState = mock(UmsUsersState.class);
-        ImmutableSet<String> workloadUsers = mock(ImmutableSet.class);
-        when(umsUsersState.getRequestedWorkloadUsernames()).thenReturn(workloadUsers);
-        underTest.getIpaUserState(freeIpaClient, umsUsersState, false);
-        verify(freeIpaUsersStateProvider).getFilteredFreeIpaState(any(), eq(workloadUsers));
     }
 
     @Test
     void testAddUsersToGroupsPartitionsRequests() throws Exception {
         Multimap<String, String> groupMapping = setupGroupMapping(5, underTest.maxSubjectsPerRequest * 2);
-
         Multimap<String, String> warnings = ArrayListMultimap.create();
         doNothing().when(freeIpaClient).callBatch(any(), any(), any(), any());
 
@@ -135,7 +127,6 @@ class UserSyncServiceTest {
     @Test
     void testRemoveUsersFromGroupsPartitionsRequests() throws Exception {
         Multimap<String, String> groupMapping = setupGroupMapping(5, underTest.maxSubjectsPerRequest * 2);
-
         Multimap<String, String> warnings = ArrayListMultimap.create();
         doNothing().when(freeIpaClient).callBatch(any(), any(), any(), any());
 
@@ -217,7 +208,6 @@ class UserSyncServiceTest {
         underTest.applyStateDifferenceToIpa(ENV_CRN, freeIpaClient, usersStateDifference, warnings::put, true);
 
         verify(freeIpaClient, times(6)).callBatch(any(), any(), any(), any());
-
         verifyNoMoreInteractions(freeIpaClient);
     }
 
