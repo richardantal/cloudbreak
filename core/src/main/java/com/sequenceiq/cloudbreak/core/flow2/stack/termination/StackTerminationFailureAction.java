@@ -1,6 +1,7 @@
 package com.sequenceiq.cloudbreak.core.flow2.stack.termination;
 
 import java.util.Map;
+import java.util.Optional;
 
 import javax.inject.Inject;
 
@@ -23,6 +24,7 @@ import com.sequenceiq.flow.core.FlowParameters;
 
 @Component("StackTerminationFailureAction")
 public class StackTerminationFailureAction extends AbstractStackFailureAction<StackTerminationState, StackTerminationEvent> {
+
     private static final Logger LOGGER = LoggerFactory.getLogger(StackTerminationFailureAction.class);
 
     @Inject
@@ -43,11 +45,11 @@ public class StackTerminationFailureAction extends AbstractStackFailureAction<St
 
     @Override
     protected void doExecute(StackFailureContext context, StackFailureEvent payload, Map<Object, Object> variables) {
-        boolean forced = variables.get("FORCEDTERMINATION") != null && Boolean.valueOf(variables.get("FORCEDTERMINATION").toString());
+        boolean forced = variables.get("FORCEDTERMINATION") != null && Boolean.parseBoolean(variables.get("FORCEDTERMINATION").toString());
         try {
             stackTerminationService.handleStackTerminationError(context.getStackView().getId(), payload.getException(), forced);
         } catch (Exception e) {
-            LOGGER.error("Exception occured while Cloudbreak tried to handle stack termination error: ", e);
+            LOGGER.error("Exception occurred while Cloudbreak tried to handle stack termination error: ", e);
         }
         getMetricService().incrementMetricCounter(MetricType.STACK_TERMINATION_FAILED, context.getStackView(), payload.getException());
         sendEvent(context);
@@ -56,5 +58,11 @@ public class StackTerminationFailureAction extends AbstractStackFailureAction<St
     @Override
     protected Selectable createRequest(StackFailureContext context) {
         return new StackEvent(StackTerminationEvent.STACK_TERMINATION_FAIL_HANDLED_EVENT.event(), context.getStackView().getId());
+    }
+
+    @Override
+    protected Object getFailurePayload(StackFailureEvent payload, Optional<StackFailureContext> flowContext, Exception ex) {
+
+        return super.getFailurePayload(payload, flowContext, ex);
     }
 }

@@ -28,6 +28,7 @@ import com.sequenceiq.flow.core.FlowParameters;
 
 @Component("StackPreTerminationAction")
 public class StackPreTerminationAction extends AbstractStackTerminationAction<TerminationEvent> {
+
     private static final Logger LOGGER = LoggerFactory.getLogger(StackPreTerminationAction.class);
 
     @Inject
@@ -42,7 +43,7 @@ public class StackPreTerminationAction extends AbstractStackTerminationAction<Te
 
     @Override
     protected void prepareExecution(TerminationEvent payload, Map<Object, Object> variables) {
-        variables.put("FORCEDTERMINATION", payload.getForced());
+        variables.put("FORCEDTERMINATION", payload.getTerminationType().isForced());
     }
 
     @Override
@@ -54,9 +55,19 @@ public class StackPreTerminationAction extends AbstractStackTerminationAction<Te
             StackPreTerminationFailed terminateStackResult = new StackPreTerminationFailed(payload.getResourceId(), new IllegalArgumentException(statusReason));
             sendEvent(context, StackTerminationEvent.PRE_TERMINATION_FAILED_EVENT.event(), terminateStackResult);
         } else {
+            updateStatus(context, payload, stack);
+            sendEvent(context);
+        }
+    }
+
+    private void updateStatus(StackTerminationContext context, TerminationEvent payload, Stack stack) {
+        if (payload.getTerminationType().isRecovery()) {
+            stackUpdater.updateStackStatus(stack.getId(), DetailedStackStatus.CLUSTER_RECOVERY_IN_PROGRESS, "Recovering the cluster and its infrastructure.");
+            LOGGER.debug("Assembling recovery stack event for stack: {}", stack);
+            LOGGER.debug("Triggering recovery stack event: {}", payload);
+        } else {
             stackUpdater.updateStackStatus(stack.getId(), DetailedStackStatus.DELETE_IN_PROGRESS, "Terminating the cluster and its infrastructure.");
             cloudbreakEventService.fireCloudbreakEvent(context.getStack().getId(), DELETE_IN_PROGRESS.name(), STACK_DELETE_IN_PROGRESS);
-            sendEvent(context);
             LOGGER.debug("Assembling terminate stack event for stack: {}", stack);
             LOGGER.debug("Triggering terminate stack event: {}", payload);
         }
@@ -65,11 +76,11 @@ public class StackPreTerminationAction extends AbstractStackTerminationAction<Te
     @Override
     protected StackTerminationContext createStackTerminationContext(FlowParameters flowParameters, Stack stack, CloudContext cloudContext,
             CloudCredential cloudCredential, CloudStack cloudStack, List<CloudResource> resources, TerminationEvent payload) {
-        return new StackTerminationContext(flowParameters, stack, cloudContext, cloudCredential, cloudStack, resources, payload.getForced());
+        return new StackTerminationContext(flowParameters, stack, cloudContext, cloudCredential, cloudStack, resources, payload.getTerminationType());
     }
 
     @Override
     protected StackPreTerminationRequest createRequest(StackTerminationContext context) {
-        return new StackPreTerminationRequest(context.getStack().getId(), context.getTerminationForced());
+        return new StackPreTerminationRequest(context.getStack().getId(), context.getTerminationType().isForced());
     }
 }
