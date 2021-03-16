@@ -33,7 +33,7 @@ import org.springframework.stereotype.Service;
 import com.cloudera.cdp.environments.model.CreateAWSCredentialRequest;
 import com.google.common.base.Strings;
 import com.google.common.collect.Sets;
-import com.sequenceiq.authorization.service.list.AuthorizationResource;
+import com.sequenceiq.authorization.service.list.ResourceWithId;
 import com.sequenceiq.authorization.resource.AuthorizationResourceType;
 import com.sequenceiq.authorization.service.OwnerAssignmentService;
 import com.sequenceiq.authorization.service.ResourceCrnAndNameProvider;
@@ -102,7 +102,7 @@ public class CredentialService extends AbstractCredentialService implements Reso
         return repository.findAllByAccountId(accountId, getValidPlatformsForAccountId(accountId), type);
     }
 
-    public List<AuthorizationResource> findAsAuthorizationResourcesInAccountByType(String accountId, CredentialType type) {
+    public List<ResourceWithId> findAsAuthorizationResourcesInAccountByType(String accountId, CredentialType type) {
         return repository.findAsAuthorizationResourcesInAccountByType(accountId, getValidPlatformsForAccountId(accountId), type);
     }
 

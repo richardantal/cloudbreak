@@ -36,7 +36,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
-import com.sequenceiq.authorization.service.list.AuthorizationResource;
+import com.sequenceiq.authorization.service.list.ResourceWithId;
 import com.sequenceiq.authorization.resource.AuthorizationResourceType;
 import com.sequenceiq.authorization.service.OwnerAssignmentService;
 import com.sequenceiq.authorization.service.ResourceCrnAndNameProvider;
@@ -149,15 +149,15 @@ public class SdxService implements ResourceIdProvider, ResourceCrnAndNameProvide
     @Value("${info.app.version}")
     private String sdxClusterServiceVersion;
 
-    public List<AuthorizationResource> findAsAuthorizationResorces(String accountId) {
+    public List<ResourceWithId> findAsAuthorizationResorces(String accountId) {
         return sdxClusterRepository.findAuthorizationResourcesByAccountId(accountId);
     }
 
-    public List<AuthorizationResource> findAsAuthorizationResorcesByEnvName(String accountId, String envName) {
+    public List<ResourceWithId> findAsAuthorizationResorcesByEnvName(String accountId, String envName) {
         return sdxClusterRepository.findAuthorizationResourcesByAccountIdAndEnvName(accountId, envName);
     }
 
-    public List<AuthorizationResource> findAsAuthorizationResorcesByEnvCrn(String accountId, String envCrn) {
+    public List<ResourceWithId> findAsAuthorizationResorcesByEnvCrn(String accountId, String envCrn) {
         return sdxClusterRepository.findAuthorizationResourcesByAccountIdAndEnvCrn(accountId, envCrn);
     }
 

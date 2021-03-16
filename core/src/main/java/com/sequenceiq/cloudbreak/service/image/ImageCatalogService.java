@@ -37,7 +37,7 @@ import org.springframework.util.CollectionUtils;
 
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Sets;
-import com.sequenceiq.authorization.service.list.AuthorizationResource;
+import com.sequenceiq.authorization.service.list.ResourceWithId;
 import com.sequenceiq.authorization.resource.AuthorizationResourceType;
 import com.sequenceiq.authorization.service.OwnerAssignmentService;
 import com.sequenceiq.authorization.service.ResourceCrnAndNameProvider;
@@ -129,7 +129,7 @@ public class ImageCatalogService extends AbstractWorkspaceAwareResourceService<I
         return imageCatalogs;
     }
 
-    public List<AuthorizationResource> findAsAuthorizationResorcesInWorkspace(Long workspaceId) {
+    public List<ResourceWithId> findAsAuthorizationResorcesInWorkspace(Long workspaceId) {
         return imageCatalogRepository.findAsAuthorizationResourcesInWorkspace(workspaceId);
     }
 

@@ -24,7 +24,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import com.google.common.collect.Lists;
-import com.sequenceiq.authorization.service.list.AuthorizationResource;
+import com.sequenceiq.authorization.service.list.ResourceWithId;
 import com.sequenceiq.authorization.resource.AuthorizationResourceType;
 import com.sequenceiq.authorization.service.OwnerAssignmentService;
 import com.sequenceiq.authorization.service.ResourceCrnAndNameProvider;
@@ -213,7 +213,7 @@ public class EnvironmentService extends AbstractAccountAwareResourceService<Envi
                 .collect(Collectors.toList());
     }
 
-    public List<AuthorizationResource> findAsAuthorizationResourcesInAccount(String accountId) {
+    public List<ResourceWithId> findAsAuthorizationResourcesInAccount(String accountId) {
         return environmentRepository.findAsAuthorizationResourcesInAccount(accountId);
     }
 

@@ -23,7 +23,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 import com.google.common.collect.Sets;
-import com.sequenceiq.authorization.service.list.AuthorizationResource;
+import com.sequenceiq.authorization.service.list.ResourceWithId;
 import com.sequenceiq.authorization.resource.AuthorizationResourceType;
 import com.sequenceiq.authorization.service.OwnerAssignmentService;
 import com.sequenceiq.authorization.service.ResourceCrnAndNameProvider;
@@ -199,7 +199,7 @@ public class RecipeService extends AbstractArchivistService<Recipe> implements R
         return Sets.newLinkedHashSet(recipeViewRepository.findAllById(ids));
     }
 
-    public List<AuthorizationResource> findAsAuthorizationResourcesInWorkspace(Long workspaceId) {
+    public List<ResourceWithId> findAsAuthorizationResourcesInWorkspace(Long workspaceId) {
         return recipeViewRepository.findAsAuthorizationResourcesInWorkspace(workspaceId);
     }
 }

@@ -8,6 +8,7 @@ import java.util.Optional;
 import java.util.stream.Collectors;
 
 import javax.inject.Inject;
+import javax.ws.rs.InternalServerErrorException;
 
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.tuple.ImmutablePair;
@@ -19,20 +20,32 @@ import com.cloudera.thunderhead.service.authorization.AuthorizationProto;
 import com.google.common.collect.LinkedListMultimap;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Multimap;
+import com.sequenceiq.authorization.info.model.CheckResourceRightV4Response;
 import com.sequenceiq.authorization.info.model.CheckResourceRightV4SingleResponse;
 import com.sequenceiq.authorization.info.model.CheckResourceRightsV4Request;
 import com.sequenceiq.authorization.info.model.CheckResourceRightsV4Response;
+import com.sequenceiq.authorization.info.model.CheckRightOnResourcesV4Request;
+import com.sequenceiq.authorization.info.model.CheckRightOnResourcesV4Response;
 import com.sequenceiq.authorization.info.model.CheckRightV4Request;
 import com.sequenceiq.authorization.info.model.CheckRightV4Response;
 import com.sequenceiq.authorization.info.model.CheckRightV4SingleResponse;
 import com.sequenceiq.authorization.info.model.RightV4;
+import com.sequenceiq.authorization.service.list.AbstractAuthorizationResourceProvider;
+import com.sequenceiq.authorization.service.list.Resource;
+import com.sequenceiq.authorization.service.list.ResourceFilteringService;
 import com.sequenceiq.authorization.service.model.AuthorizationRule;
 import com.sequenceiq.cloudbreak.auth.ThreadBasedUserCrnProvider;
+import com.sequenceiq.cloudbreak.auth.altus.Crn;
+import com.sequenceiq.cloudbreak.auth.altus.Crns;
+import com.sequenceiq.cloudbreak.auth.altus.EntitlementService;
 import com.sequenceiq.cloudbreak.auth.altus.GrpcUmsClient;
+import com.sequenceiq.cloudbreak.common.exception.BadRequestException;
 import com.sequenceiq.cloudbreak.logger.MDCUtils;
 
 @Service
 public class UtilAuthorizationService {
+
+    private static final int UMS_HAS_RIGHTS_THRESHOLD = 3;
 
     private static final Logger LOGGER = LoggerFactory.getLogger(UtilAuthorizationService.class);
 
@@ -44,6 +57,15 @@ public class UtilAuthorizationService {
 
     @Inject
     private ResourceCrnAthorizationFactory resourceCrnAthorizationFactory;
+
+    @Inject
+    private EntitlementService entitlementService;
+
+    @Inject
+    private Optional<AbstractAuthorizationResourceProvider> authorizationResourceProvider;
+
+    @Inject
+    private ResourceFilteringService resourceFilteringService;
 
     public CheckRightV4Response getRightResult(CheckRightV4Request rightReq) {
         String userCrn = ThreadBasedUserCrnProvider.getUserCrn();
@@ -60,23 +82,24 @@ public class UtilAuthorizationService {
         Multimap<ImmutablePair<String, RightV4>, AuthorizationProto.RightCheck> resourceRightsChecks = LinkedListMultimap.create();
         checkResourceRightsV4Request.getResourceRights()
                 .forEach(resourceRightsV4 -> resourceRightsV4.getRights()
-                    .forEach(rightV4 ->  {
-                        Optional<AuthorizationRule> authorizationRuleOptional =
-                                resourceCrnAthorizationFactory.calcAuthorization(resourceRightsV4.getResourceCrn(), rightV4.getAction());
-                        if (authorizationRuleOptional.isPresent()) {
-                            AuthorizationRule authorizationRule = authorizationRuleOptional.get();
-                            authorizationRule.convert((authorizationResourceAction, resource) -> {
-                                AuthorizationProto.RightCheck rightCheckObject = createRightCheckObject(authorizationResourceAction.getRight(), resource);
+                        .forEach(rightV4 -> {
+                            Optional<AuthorizationRule> authorizationRuleOptional =
+                                    resourceCrnAthorizationFactory.calcAuthorization(resourceRightsV4.getResourceCrn(), rightV4.getAction());
+                            if (authorizationRuleOptional.isPresent()) {
+                                AuthorizationRule authorizationRule = authorizationRuleOptional.get();
+                                authorizationRule.convert((authorizationResourceAction, resource) -> {
+                                    AuthorizationProto.RightCheck rightCheckObject = createRightCheckObject(authorizationResourceAction.getRight(), resource);
+                                    resourceRightsChecks.put(new ImmutablePair<>(resourceRightsV4.getResourceCrn(), rightV4), rightCheckObject);
+                                });
+                            } else {
+                                AuthorizationProto.RightCheck rightCheckObject = createRightCheckObject(rightV4.getAction().getRight(),
+                                        resourceRightsV4.getResourceCrn());
                                 resourceRightsChecks.put(new ImmutablePair<>(resourceRightsV4.getResourceCrn(), rightV4), rightCheckObject);
-                            });
-                        } else {
-                            AuthorizationProto.RightCheck rightCheckObject = createRightCheckObject(rightV4.getAction().getRight(),
-                                    resourceRightsV4.getResourceCrn());
-                            resourceRightsChecks.put(new ImmutablePair<>(resourceRightsV4.getResourceCrn(), rightV4), rightCheckObject);
-                            LOGGER.info("Can't find authorization rules for the following resource:{} ({}). Please make sure you are calling the right service"
-                                    + " for the resource?", resourceRightsV4.getResourceCrn(), rightV4.getAction());
-                        }
-                    }));
+                                LOGGER.info("Can't find authorization rules for the following resource:{} ({}). " +
+                                                "Please make sure you are calling the right service for the resource?",
+                                        resourceRightsV4.getResourceCrn(), rightV4.getAction());
+                            }
+                        }));
 
         String userCrn = ThreadBasedUserCrnProvider.getUserCrn();
         List<AuthorizationProto.RightCheck> rightChecks = Lists.newLinkedList(resourceRightsChecks.values());
@@ -90,6 +113,34 @@ public class UtilAuthorizationService {
         }
 
         return generateResponse(resourceRightsChecks, rightCheckResultMap);
+    }
+
+    public CheckRightOnResourcesV4Response getRightOnResourcesResult(CheckRightOnResourcesV4Request request) {
+        Crn userCrn = Crns.ofUser(ThreadBasedUserCrnProvider.getUserCrn());
+        if (entitlementService.listFilteringEnabled(userCrn.getAccountId())) {
+            if (authorizationResourceProvider.isPresent()) {
+                List<Resource> resources = authorizationResourceProvider.get().findResources(userCrn.getAccountId(), request.getResourceCrns());
+                List<CheckResourceRightV4Response> responses = resourceFilteringService.filter(userCrn, request.getRight().getAction(),
+                        resources, hasRightPredicate ->
+                                request.getResourceCrns()
+                                        .stream()
+                                        .map(resourceCrn -> {
+                                            CheckResourceRightV4Response checkResourceRightV4Response = new CheckResourceRightV4Response();
+                                            checkResourceRightV4Response.setResourceCrn(resourceCrn);
+                                            checkResourceRightV4Response.setResult(hasRightPredicate.test(resourceCrn));
+                                            return checkResourceRightV4Response;
+                                        }).collect(Collectors.toList()));
+                CheckRightOnResourcesV4Response response = new CheckRightOnResourcesV4Response();
+                response.setRight(request.getRight());
+                response.setResponses(responses);
+                return response;
+            } else {
+                throw new InternalServerErrorException("Can't filter the given resources");
+            }
+        } else {
+            throw new BadRequestException("Not entitled to use list filtering in the current account.");
+        }
+
     }
 
     private CheckResourceRightsV4Response generateResponse(Multimap<ImmutablePair<String, RightV4>, AuthorizationProto.RightCheck> resourceRightsChecks,
