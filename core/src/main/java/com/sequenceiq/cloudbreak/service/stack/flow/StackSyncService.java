@@ -1,6 +1,6 @@
 package com.sequenceiq.cloudbreak.service.stack.flow;
 
-import static com.sequenceiq.cloudbreak.api.endpoint.v4.common.Status.AMBIGUOUS;
+import static com.sequenceiq.cloudbreak.api.endpoint.v4.common.Status.UNREACHABLE;
 import static com.sequenceiq.cloudbreak.api.endpoint.v4.common.Status.AVAILABLE;
 import static com.sequenceiq.cloudbreak.api.endpoint.v4.common.Status.DELETED_ON_PROVIDER_SIDE;
 import static com.sequenceiq.cloudbreak.api.endpoint.v4.common.Status.DELETE_FAILED;
@@ -242,10 +242,10 @@ public class StackSyncService {
                     eventService.fireCloudbreakEvent(stack.getId(), AVAILABLE.name(), STACK_SYNC_INSTANCE_STATE_SYNCED);
                 }
             } else {
-                if (stack.getStatus() != AMBIGUOUS) {
+                if (stack.getStatus() != UNREACHABLE) {
                     updateStackStatusIfEnabled(stack.getId(), DetailedStackStatus.CLUSTER_MANAGER_NOT_RESPONDING, CM_SERVER_NOT_RESPONDING,
                             syncConfig.isStackStatusUpdateEnabled());
-                    eventService.fireCloudbreakEvent(stack.getId(), AMBIGUOUS.name(), STACK_SYNC_INSTANCE_STATE_SYNCED);
+                    eventService.fireCloudbreakEvent(stack.getId(), UNREACHABLE.name(), STACK_SYNC_INSTANCE_STATE_SYNCED);
                 }
             }
         } else if (isAllStopped(instanceStateCounts, instances.size()) && stack.getStatus() != STOPPED) {
