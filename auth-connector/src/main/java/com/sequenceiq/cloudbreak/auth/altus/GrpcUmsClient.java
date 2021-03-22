@@ -65,6 +65,8 @@ public class GrpcUmsClient {
     private static final Predicate<String> VALID_AUTHZ_RESOURCE = resource -> Crn.isCrn(resource) ||
             StringUtils.isEmpty(resource) || StringUtils.equals(resource, "*");
 
+    private static final int CHECK_RIGHT_HAS_RIGHTS_TRESHOLD = 3;
+
     @Inject
     private ManagedChannelWrapper channelWrapper;
 
@@ -428,7 +430,7 @@ public class GrpcUmsClient {
     private boolean makeCheckRightCall(String actorCrn, String userCrn, String right, String resource, Optional<String> requestId) {
         checkArgument(VALID_AUTHZ_RESOURCE.test(resource), String.format("Provided resource [%s] is not in CRN format", resource));
         try {
-            AuthorizationClient client = new AuthorizationClient(channelWrapper.getChannel(), actorCrn, tracer);
+            AuthorizationClient client = makeAuthorizationClient(actorCrn);
             LOGGER.info("Checking right {} for user {} on resource {}!", right, userCrn, resource != null ? resource : "account");
             client.checkRight(RequestIdUtil.getOrGenerate(requestId), userCrn, right, resource);
             LOGGER.info("User {} has right {} on resource {}!", userCrn, right, resource != null ? resource : "account");
@@ -474,8 +476,23 @@ public class GrpcUmsClient {
             return rightChecks.stream().map(rightCheck -> Boolean.TRUE).collect(Collectors.toList());
         }
         if (!rightChecks.isEmpty()) {
-            AuthorizationClient client = new AuthorizationClient(channelWrapper.getChannel(), actorCrn, tracer);
-            List<Boolean> retVal = client.hasRights(RequestIdUtil.getOrGenerate(requestId), memberCrn, rightChecks);
+            AuthorizationClient client = makeAuthorizationClient(actorCrn);
+            List<Boolean> retVal;
+            String reqId = RequestIdUtil.getOrGenerate(requestId);
+            if (rightChecks.size() < CHECK_RIGHT_HAS_RIGHTS_TRESHOLD) {
+                retVal = rightChecks.stream()
+                        .map(check -> {
+                            try {
+                                client.checkRight(reqId, memberCrn, check.getRight(), check.getResource());
+                                return true;
+                            } catch (Exception ex) {
+                                return false;
+                            }
+                        })
+                        .collect(Collectors.toList());
+            } else {
+                retVal = client.hasRights(reqId, memberCrn, rightChecks);
+            }
             LOGGER.info("member {} has rights {}", memberCrn, retVal);
             return retVal;
         }
@@ -693,6 +710,11 @@ public class GrpcUmsClient {
     @VisibleForTesting
     UmsClient makeClient(ManagedChannel channel, String actorCrn) {
         return new UmsClient(channel, actorCrn, umsClientConfig, tracer);
+    }
+
+    @VisibleForTesting
+    AuthorizationClient makeAuthorizationClient(String actorCrn) {
+        return new AuthorizationClient(channelWrapper.getChannel(), actorCrn, tracer);
     }
 
     /**
