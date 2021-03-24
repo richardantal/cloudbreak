@@ -30,7 +30,7 @@ import com.sequenceiq.authorization.info.model.CheckRightV4Request;
 import com.sequenceiq.authorization.info.model.CheckRightV4Response;
 import com.sequenceiq.authorization.info.model.CheckRightV4SingleResponse;
 import com.sequenceiq.authorization.info.model.RightV4;
-import com.sequenceiq.authorization.service.list.AbstractAuthorizationResourceProvider;
+import com.sequenceiq.authorization.service.list.AuthorizationResourceProvider;
 import com.sequenceiq.authorization.service.list.Resource;
 import com.sequenceiq.authorization.service.list.ResourceFilteringService;
 import com.sequenceiq.authorization.service.model.AuthorizationRule;
@@ -44,8 +44,6 @@ import com.sequenceiq.cloudbreak.logger.MDCUtils;
 
 @Service
 public class UtilAuthorizationService {
-
-    private static final int UMS_HAS_RIGHTS_THRESHOLD = 3;
 
     private static final Logger LOGGER = LoggerFactory.getLogger(UtilAuthorizationService.class);
 
@@ -62,7 +60,7 @@ public class UtilAuthorizationService {
     private EntitlementService entitlementService;
 
     @Inject
-    private Optional<AbstractAuthorizationResourceProvider> authorizationResourceProvider;
+    private Optional<AuthorizationResourceProvider> authorizationResourceProvider;
 
     @Inject
     private ResourceFilteringService resourceFilteringService;
@@ -117,7 +115,7 @@ public class UtilAuthorizationService {
 
     public CheckRightOnResourcesV4Response getRightOnResourcesResult(CheckRightOnResourcesV4Request request) {
         Crn userCrn = Crns.ofUser(ThreadBasedUserCrnProvider.getUserCrn());
-        if (entitlementService.listFilteringEnabled(userCrn.getAccountId())) {
+        if (true) {
             if (authorizationResourceProvider.isPresent()) {
                 List<Resource> resources = authorizationResourceProvider.get().findResources(userCrn.getAccountId(), request.getResourceCrns());
                 List<CheckResourceRightV4Response> responses = resourceFilteringService.filter(userCrn, request.getRight().getAction(),
