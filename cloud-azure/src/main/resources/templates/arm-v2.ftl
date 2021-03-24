@@ -254,14 +254,14 @@
                        <#if !noFirewallRules || !noPublicIp>,</#if>
                        "[concat('Microsoft.Network/virtualNetworks/', parameters('virtualNetworkNamePrefix'))]"
                        </#if>
-                       <#if instanceGroup == "GATEWAY" && loadBalancers?? && (loadBalancers?size > 0)>,
-                           <#list loadBalancers as loadBalancer>
+                       <#if loadBalancerMapping[instance.groupName]?? && (loadBalancerMapping[instance.groupName]?size > 0)>
+                           <#list loadBalancerMapping[instance.groupName] as loadBalancer>
                                <#--
-                                   we have to define a dependency between the NIC and the address pool it belongs to
-                                   this makes every instance in the gateway group depend on every load balancer address pool
-                                   when we add support for multiple load balancers, this will have to be updated.
-                                -->
-                               "[resourceId('Microsoft.Network/loadBalancers', '${loadBalancer.name}')]"
+                                  we have to define a dependency between the NIC and the address pool it belongs to
+                                  this makes every instance in the gateway group depend on every load balancer address pool
+                                  when we add support for multiple load balancers, this will have to be updated.
+                               -->
+                               ,"[resourceId('Microsoft.Network/loadBalancers', '${loadBalancer.name}')]"
                            </#list>
                        </#if>
                    ],
@@ -295,17 +295,17 @@
                                        "id": "[concat(variables('vnetID'),'/subnets/',parameters('subnet1Name'))]"
                                    }
                                    </#if>
-                                   <#if instanceGroup == "GATEWAY" && loadBalancers?? && (loadBalancers?size > 0)>,
-                                   "loadBalancerBackendAddressPools": [
+                                   <#if loadBalancerMapping[instance.groupName]?? && (loadBalancerMapping[instance.groupName]?size > 0)>
+                                   ,"loadBalancerBackendAddressPools": [
                                        {
                                            <#--
                                                This is adding the NIC to all load balancer backend address pools.
                                                When we add more load balancers, we'll have to associate the NIC with
                                                only a single LB pool
                                            -->
-                                           <#list loadBalancers as loadBalancer>
+                                           <#list loadBalancerMapping[instance.groupName] as loadBalancer>
                                            "id": "[resourceId('Microsoft.Network/loadBalancers/backendAddressPools', '${loadBalancer.name}', 'address-pool')]"
-                                           <#if (loadBalancer_index + 1) != loadBalancers?size>,</#if>
+                                           <#if (loadBalancer_index + 1) != loadBalancerMapping[instance.groupName]?size>,</#if>
                                            </#list>
                                        }
                                    ]

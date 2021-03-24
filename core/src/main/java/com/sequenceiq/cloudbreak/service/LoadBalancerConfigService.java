@@ -43,6 +43,7 @@ import com.sequenceiq.environment.api.v1.environment.model.response.DetailedEnvi
 import com.sequenceiq.environment.api.v1.environment.model.response.EnvironmentNetworkResponse;
 
 import static com.sequenceiq.cloudbreak.common.mappable.CloudPlatform.AWS;
+import static com.sequenceiq.cloudbreak.common.mappable.CloudPlatform.AZURE;
 
 @Service
 public class LoadBalancerConfigService {
@@ -239,7 +240,7 @@ public class LoadBalancerConfigService {
                     return privateType == noPublicIp;
                 } else if (selectedSubnet.isPresent()) {
                     LOGGER.debug("Subnet {} type {}", subnetId, selectedSubnet.get().isPrivateSubnet() ? "private" : "public");
-                    return privateType == selectedSubnet.get().isPrivateSubnet(); // Azure subnets are always "false" for `isPrivateSubnet`.
+                    return privateType == selectedSubnet.get().isPrivateSubnet();
                 }
             }
         }
@@ -288,6 +289,7 @@ public class LoadBalancerConfigService {
         Set<InstanceGroup> knoxGatewayInstanceGroups = stack.getInstanceGroups().stream()
             .filter(ig -> knoxGatewayGroupNames.contains(ig.getGroupName()))
             .collect(Collectors.toSet());
+        validateKnoxForAzure(knoxGatewayInstanceGroups, stack.getCloudPlatform());
         if (!knoxGatewayInstanceGroups.isEmpty()) {
             LOGGER.info("Knox gateway instance found; enabling Knox load balancer configuration.");
             knoxTargetGroup = new TargetGroup();
@@ -302,6 +304,13 @@ public class LoadBalancerConfigService {
             }
         }
         return Optional.ofNullable(knoxTargetGroup);
+    }
+
+    private void validateKnoxForAzure(Set<InstanceGroup> knoxGatewayInstanceGroups, String cloudPlatform) {
+        if (AZURE.equalsIgnoreCase(cloudPlatform) && knoxGatewayInstanceGroups.size() > 1) {
+            LOGGER.warn("For Azure load balancers, Knox must be defined in a single instance group. Load balancers will not be created.");
+            knoxGatewayInstanceGroups.clear();
+        }
     }
 
     private LoadBalancer createLoadBalancerIfNotExists(Set<LoadBalancer> loadBalancers, LoadBalancerType type, Stack stack) {

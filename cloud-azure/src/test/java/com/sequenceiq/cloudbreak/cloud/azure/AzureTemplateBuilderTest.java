@@ -1,5 +1,47 @@
 package com.sequenceiq.cloudbreak.cloud.azure;
 
+import static com.sequenceiq.cloudbreak.cloud.azure.subnetstrategy.AzureSubnetStrategy.SubnetStratgyType.FILL;
+import static java.util.Collections.emptyList;
+import static org.hamcrest.Matchers.containsString;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertThat;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assume.assumeFalse;
+import static org.junit.Assume.assumeTrue;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.reset;
+import static org.mockito.Mockito.when;
+import static org.mockito.MockitoAnnotations.initMocks;
+
+import java.io.File;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.stream.Collectors;
+
+import freemarker.template.Configuration;
+
+import org.apache.commons.codec.binary.Base64;
+import org.apache.commons.lang.StringUtils;
+import org.junit.Before;
+import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.junit.runners.Parameterized;
+import org.junit.runners.Parameterized.Parameters;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.Spy;
+import org.springframework.test.util.ReflectionTestUtils;
+import org.springframework.ui.freemarker.FreeMarkerConfigurationFactoryBean;
+
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
@@ -35,44 +77,6 @@ import com.sequenceiq.cloudbreak.util.FreeMarkerTemplateUtils;
 import com.sequenceiq.cloudbreak.util.Version;
 import com.sequenceiq.common.api.type.InstanceGroupType;
 import com.sequenceiq.common.api.type.LoadBalancerType;
-import freemarker.template.Configuration;
-import org.apache.commons.codec.binary.Base64;
-import org.junit.Before;
-import org.junit.Test;
-import org.junit.runner.RunWith;
-import org.junit.runners.Parameterized;
-import org.junit.runners.Parameterized.Parameters;
-import org.mockito.InjectMocks;
-import org.mockito.Mock;
-import org.mockito.Spy;
-import org.springframework.test.util.ReflectionTestUtils;
-import org.springframework.ui.freemarker.FreeMarkerConfigurationFactoryBean;
-
-import java.io.File;
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
-import java.util.stream.Collectors;
-
-import static com.sequenceiq.cloudbreak.cloud.azure.subnetstrategy.AzureSubnetStrategy.SubnetStratgyType.FILL;
-import static java.util.Collections.emptyList;
-import static org.hamcrest.Matchers.containsString;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertThat;
-import static org.junit.Assert.assertTrue;
-import static org.junit.Assume.assumeFalse;
-import static org.junit.Assume.assumeTrue;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.Mockito.reset;
-import static org.mockito.Mockito.when;
-import static org.mockito.MockitoAnnotations.initMocks;
 
 /**
  * Validates that ARM template can be created from Free Marker Template {@code .ftl} files.
@@ -492,6 +496,59 @@ public class AzureTemplateBuilderTest {
         assertTrue(templateString.contains("\"name\": \"port-443-rule\","));
         assertTrue(templateString.contains("\"name\": \"port-8443-probe\","));
         assertTrue(templateString.contains("\"type\": \"Microsoft.Network/publicIPAddresses\","));
+    }
+
+    @Test
+    public void buildWithGatewayInstanceGroupTypeAndMultipleLoadBalancers() {
+        //GIVEN
+        assumeTrue(isTemplateVersionGreaterOrEqualThan("2.7.3.0"));
+        Network network = new Network(new Subnet(SUBNET_CIDR));
+        Map<String, String> parameters = new HashMap<>();
+        parameters.put("persistentStorage", "persistentStorageTest");
+        parameters.put("attachedStorageOption", "attachedStorageOptionTest");
+        InstanceAuthentication instanceAuthentication = new InstanceAuthentication("sshkey", "", "cloudbreak");
+
+        groups.add(new Group("gateway-group", InstanceGroupType.GATEWAY, Collections.singletonList(instance), security, null,
+            instanceAuthentication, instanceAuthentication.getLoginUserName(), instanceAuthentication.getPublicKey(), ROOT_VOLUME_SIZE, Optional.empty()));
+
+        List<CloudLoadBalancer> loadBalancers = new ArrayList<>();
+        CloudLoadBalancer publicLb = new CloudLoadBalancer(LoadBalancerType.PUBLIC);
+        publicLb.addPortToTargetGroupMapping(new TargetGroupPortPair(443, 8443), new HashSet<>(groups));
+        loadBalancers.add(publicLb);
+        CloudLoadBalancer privateLb = new CloudLoadBalancer(LoadBalancerType.PRIVATE);
+        privateLb.addPortToTargetGroupMapping(new TargetGroupPortPair(443, 8443), new HashSet<>(groups));
+        loadBalancers.add(privateLb);
+
+        cloudStack = new CloudStack(groups, network, image, parameters, tags, azureTemplateBuilder.getTemplateString(),
+            instanceAuthentication, instanceAuthentication.getLoginUserName(), instanceAuthentication.getPublicKey(), null, loadBalancers);
+        azureStackView = new AzureStackView("mystack", 3, groups, azureStorageView, azureSubnetStrategy, Collections.emptyMap());
+
+        //WHEN
+        when(azureAcceleratedNetworkValidator.validate(any())).thenReturn(ACCELERATED_NETWORK_SUPPORT);
+        when(azureStorage.getImageStorageName(any(AzureCredentialView.class), any(CloudContext.class), any(CloudStack.class))).thenReturn("test");
+        when(azureStorage.getDiskContainerName(any(CloudContext.class))).thenReturn("testStorageContainer");
+
+        String templateString =
+            azureTemplateBuilder.build(stackName, CUSTOM_IMAGE_NAME, azureCredentialView, azureStackView, cloudContext, cloudStack,
+                AzureInstanceTemplateOperation.PROVISION);
+        //THEN
+        gson.fromJson(templateString, Map.class);
+        assertTrue(templateString.contains("\"type\": \"Microsoft.Network/loadBalancers\","));
+        assertTrue(templateString.contains("\"frontendPort\": 443,"));
+        assertTrue(templateString.contains("\"backendPort\": 443,"));
+        assertTrue(templateString.contains("\"name\": \"port-443-rule\","));
+        assertTrue(templateString.contains("\"name\": \"port-8443-probe\","));
+        assertTrue(templateString.contains("\"type\": \"Microsoft.Network/publicIPAddresses\","));
+        assertEquals(2, StringUtils.countMatches(templateString,
+            ",\"[resourceId('Microsoft.Network/loadBalancers'"));
+        assertEquals(2, StringUtils.countMatches(templateString,
+            "[resourceId('Microsoft.Network/loadBalancers/backendAddressPools', 'LoadBalancerPUBLIC', 'address-pool')]"));
+        assertEquals(2, StringUtils.countMatches(templateString,
+            "[resourceId('Microsoft.Network/loadBalancers/backendAddressPools', 'LoadBalancerPRIVATE', 'address-pool')]"));
+        assertEquals(2, StringUtils.countMatches(templateString,
+            "\"type\": \"Microsoft.Network/loadBalancers\","));
+        assertEquals(1, StringUtils.countMatches(templateString,
+            "\"id\": \"[resourceId('Microsoft.Network/publicIPAddresses', 'LoadBalancerPUBLIC-publicIp')]\""));
     }
 
     @Test

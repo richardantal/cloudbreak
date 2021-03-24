@@ -1,6 +1,7 @@
 package com.sequenceiq.cloudbreak.service;
 
 import static com.sequenceiq.cloudbreak.common.type.CloudConstants.AWS;
+import static com.sequenceiq.cloudbreak.common.type.CloudConstants.AZURE;
 import static com.sequenceiq.cloudbreak.common.type.CloudConstants.GCP;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
@@ -9,6 +10,7 @@ import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.when;
 
 import java.lang.reflect.Field;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Optional;
@@ -145,7 +147,7 @@ public class LoadBalancerConfigServiceTest extends SubnetTest {
 
     @Test
     public void testCreateLoadBalancerForDataLakePrivateSubnets() {
-        Stack stack = createStack(StackType.DATALAKE, PRIVATE_ID_1);
+        Stack stack = createAwsStack(StackType.DATALAKE, PRIVATE_ID_1);
         CloudSubnet subnet = getPrivateCloudSubnet(PRIVATE_ID_1, AZ_1);
         DetailedEnvironmentResponse environment = createEnvironment(subnet, false);
 
@@ -163,7 +165,7 @@ public class LoadBalancerConfigServiceTest extends SubnetTest {
 
     @Test
     public void testCreateLoadBalancerForDataLakePublicSubnets() {
-        Stack stack = createStack(StackType.DATALAKE, PUBLIC_ID_1);
+        Stack stack = createAwsStack(StackType.DATALAKE, PUBLIC_ID_1);
         CloudSubnet subnet = getPublicCloudSubnet(PUBLIC_ID_1, AZ_1);
         DetailedEnvironmentResponse environment = createEnvironment(subnet, false);
 
@@ -180,7 +182,7 @@ public class LoadBalancerConfigServiceTest extends SubnetTest {
 
     @Test
     public void testCreateLoadBalancerForDatahubWithDatalakeEntitlement() {
-        Stack stack = createStack(StackType.WORKLOAD, PRIVATE_ID_1);
+        Stack stack = createAwsStack(StackType.WORKLOAD, PRIVATE_ID_1);
         DetailedEnvironmentResponse environment = createEnvironment(getPrivateCloudSubnet(PRIVATE_ID_1, AZ_1), false);
 
         when(entitlementService.datalakeLoadBalancerEnabled(anyString())).thenReturn(true);
@@ -194,7 +196,7 @@ public class LoadBalancerConfigServiceTest extends SubnetTest {
 
     @Test
     public void testCreateLoadBalancerForDataLakeEntitlementDisabled() {
-        Stack stack = createStack(StackType.DATALAKE, PRIVATE_ID_1);
+        Stack stack = createAwsStack(StackType.DATALAKE, PRIVATE_ID_1);
         DetailedEnvironmentResponse environment = createEnvironment(getPrivateCloudSubnet(PRIVATE_ID_1, AZ_1), false);
 
         when(entitlementService.datalakeLoadBalancerEnabled(anyString())).thenReturn(false);
@@ -207,7 +209,7 @@ public class LoadBalancerConfigServiceTest extends SubnetTest {
 
     @Test
     public void testCreateAWSLoadBalancerForDataLakeEntitlementDisabledPublicSubnets() {
-        Stack stack = createStack(StackType.DATALAKE, PUBLIC_ID_1);
+        Stack stack = createAwsStack(StackType.DATALAKE, PUBLIC_ID_1);
         CloudSubnet subnet = getPublicCloudSubnet(PUBLIC_ID_1, AZ_1);
         DetailedEnvironmentResponse environment = createEnvironment(subnet, false);
         environment.setCloudPlatform(CloudPlatform.AWS.name());
@@ -225,7 +227,7 @@ public class LoadBalancerConfigServiceTest extends SubnetTest {
 
     @Test
     public void testCreateAWSLoadBalancerForDataLakeEntitlementDisabledPrivateSubnets() {
-        Stack stack = createStack(StackType.DATALAKE, PRIVATE_ID_1);
+        Stack stack = createAwsStack(StackType.DATALAKE, PRIVATE_ID_1);
         CloudSubnet subnet = getPrivateCloudSubnet(PRIVATE_ID_1, AZ_1);
         DetailedEnvironmentResponse environment = createEnvironment(subnet, false);
         environment.setCloudPlatform(CloudPlatform.AWS.name());
@@ -244,7 +246,7 @@ public class LoadBalancerConfigServiceTest extends SubnetTest {
 
     @Test
     public void testCreateLoadBalancersForEndpointGatewayDatalake() {
-        Stack stack = createStack(StackType.DATALAKE, PRIVATE_ID_1);
+        Stack stack = createAwsStack(StackType.DATALAKE, PRIVATE_ID_1);
         CloudSubnet subnet = getPrivateCloudSubnet(PRIVATE_ID_1, AZ_1);
         DetailedEnvironmentResponse environment = createEnvironment(subnet, true);
 
@@ -262,7 +264,7 @@ public class LoadBalancerConfigServiceTest extends SubnetTest {
 
     @Test
     public void testCreateLoadBalancersForEndpointGatewayDatahub() {
-        Stack stack = createStack(StackType.WORKLOAD, PRIVATE_ID_1);
+        Stack stack = createAwsStack(StackType.WORKLOAD, PRIVATE_ID_1);
         CloudSubnet subnet = getPrivateCloudSubnet(PRIVATE_ID_1, AZ_1);
         DetailedEnvironmentResponse environment = createEnvironment(subnet, true);
 
@@ -280,7 +282,7 @@ public class LoadBalancerConfigServiceTest extends SubnetTest {
 
     @Test
     public void testCreateLoadBalancersForDatahubWithPublicSubnet() {
-        Stack stack = createStack(StackType.WORKLOAD, PUBLIC_ID_1);
+        Stack stack = createAwsStack(StackType.WORKLOAD, PUBLIC_ID_1);
         CloudSubnet subnet = getPublicCloudSubnet(PUBLIC_ID_1, AZ_1);
         DetailedEnvironmentResponse environment = createEnvironment(subnet, false);
 
@@ -297,7 +299,7 @@ public class LoadBalancerConfigServiceTest extends SubnetTest {
 
     @Test
     public void testCreateLoadBalancersForDatahubWithPrivateSubnet() {
-        Stack stack = createStack(StackType.WORKLOAD, PRIVATE_ID_1);
+        Stack stack = createAwsStack(StackType.WORKLOAD, PRIVATE_ID_1);
         CloudSubnet subnet = getPrivateCloudSubnet(PRIVATE_ID_1, AZ_1);
         DetailedEnvironmentResponse environment = createEnvironment(subnet, false);
 
@@ -314,7 +316,7 @@ public class LoadBalancerConfigServiceTest extends SubnetTest {
 
     @Test
     public void testCreateLoadBalancersForEndpointGatewayDatalakePublicSubnetsOnly() {
-        Stack stack = createStack(StackType.DATALAKE, PUBLIC_ID_1);
+        Stack stack = createAwsStack(StackType.DATALAKE, PUBLIC_ID_1);
         CloudSubnet subnet = getPublicCloudSubnet(PUBLIC_ID_1, AZ_1);
         DetailedEnvironmentResponse environment = createEnvironment(subnet, true);
 
@@ -331,7 +333,7 @@ public class LoadBalancerConfigServiceTest extends SubnetTest {
 
     @Test
     public void testCreateLoadBalancersUnsupportedStackType() {
-        Stack stack1 = createStack(StackType.TEMPLATE, PRIVATE_ID_1);
+        Stack stack1 = createAwsStack(StackType.TEMPLATE, PRIVATE_ID_1);
         DetailedEnvironmentResponse environment = createEnvironment(getPrivateCloudSubnet(PRIVATE_ID_1, AZ_1), true);
 
         ThreadBasedUserCrnProvider.doAs(USER_CRN, () -> {
@@ -339,7 +341,7 @@ public class LoadBalancerConfigServiceTest extends SubnetTest {
             assert loadBalancers.isEmpty();
         });
 
-        Stack stack2 = createStack(StackType.LEGACY, PRIVATE_ID_1);
+        Stack stack2 = createAwsStack(StackType.LEGACY, PRIVATE_ID_1);
 
         ThreadBasedUserCrnProvider.doAs(USER_CRN, () -> {
             Set<LoadBalancer> loadBalancers = underTest.createLoadBalancers(stack2, environment, false);
@@ -349,7 +351,7 @@ public class LoadBalancerConfigServiceTest extends SubnetTest {
 
     @Test
     public void testCreateLoadBalancersNullEnvironment() {
-        Stack stack = createStack(StackType.DATALAKE, PRIVATE_ID_1);
+        Stack stack = createAwsStack(StackType.DATALAKE, PRIVATE_ID_1);
 
         ThreadBasedUserCrnProvider.doAs(USER_CRN, () -> {
             Set<LoadBalancer> loadBalancers = underTest.createLoadBalancers(stack, null, false);
@@ -359,7 +361,7 @@ public class LoadBalancerConfigServiceTest extends SubnetTest {
 
     @Test
     public void testCreateLoadBalancersEndpointGatewayNullNetwork() {
-        Stack stack = createStack(StackType.DATALAKE, PUBLIC_ID_1);
+        Stack stack = createAwsStack(StackType.DATALAKE, PUBLIC_ID_1);
         DetailedEnvironmentResponse environment = createEnvironment(getPrivateCloudSubnet(PUBLIC_ID_1, AZ_1), true);
         environment.setNetwork(null);
 
@@ -374,7 +376,7 @@ public class LoadBalancerConfigServiceTest extends SubnetTest {
 
     @Test
     public void testCreateLoadBalancerNoStackNetwork() {
-        Stack stack = createStack(StackType.DATALAKE, null);
+        Stack stack = createAwsStack(StackType.DATALAKE, null);
         stack.setNetwork(null);
         CloudSubnet subnet = getPrivateCloudSubnet(PRIVATE_ID_1, AZ_1);
         DetailedEnvironmentResponse environment = createEnvironment(subnet, false);
@@ -390,7 +392,7 @@ public class LoadBalancerConfigServiceTest extends SubnetTest {
 
     @Test
     public void testCreateLoadBalancerNoAttributes() {
-        Stack stack = createStack(StackType.DATALAKE, null);
+        Stack stack = createAwsStack(StackType.DATALAKE, null);
         stack.getNetwork().setAttributes(null);
         CloudSubnet subnet = getPrivateCloudSubnet(PRIVATE_ID_1, AZ_1);
         DetailedEnvironmentResponse environment = createEnvironment(subnet, false);
@@ -406,7 +408,7 @@ public class LoadBalancerConfigServiceTest extends SubnetTest {
 
     @Test
     public void testCreateLoadBalancerNoSubnetSpecified() {
-        Stack stack = createStack(StackType.DATALAKE, null);
+        Stack stack = createAwsStack(StackType.DATALAKE, null);
         CloudSubnet subnet = getPrivateCloudSubnet(PRIVATE_ID_1, AZ_1);
         DetailedEnvironmentResponse environment = createEnvironment(subnet, false);
 
@@ -421,7 +423,7 @@ public class LoadBalancerConfigServiceTest extends SubnetTest {
 
     @Test
     public void testCreateLoadBalancerNoEnvironmentNetwork() {
-        Stack stack = createStack(StackType.DATALAKE, null);
+        Stack stack = createAwsStack(StackType.DATALAKE, null);
 
         when(entitlementService.datalakeLoadBalancerEnabled(anyString())).thenReturn(true);
         when(blueprint.getBlueprintText()).thenReturn(getBlueprintText("input/clouderamanager-knox.bp"));
@@ -486,7 +488,7 @@ public class LoadBalancerConfigServiceTest extends SubnetTest {
 
     @Test
     public void testCreateLoadBalancerUnsupportedPlatform() {
-        Stack stack = createStack(StackType.DATALAKE, PRIVATE_ID_1);
+        Stack stack = createAwsStack(StackType.DATALAKE, PRIVATE_ID_1);
         stack.setCloudPlatform(GCP);
         CloudSubnet subnet = getPrivateCloudSubnet(PRIVATE_ID_1, AZ_1);
         DetailedEnvironmentResponse environment = createEnvironment(subnet, false);
@@ -501,7 +503,7 @@ public class LoadBalancerConfigServiceTest extends SubnetTest {
 
     @Test
     public void testCreateLoadBalancerDryRun() {
-        Stack stack = createStack(StackType.DATALAKE, PRIVATE_ID_1);
+        Stack stack = createAwsStack(StackType.DATALAKE, PRIVATE_ID_1);
         CloudSubnet subnet = getPrivateCloudSubnet(PRIVATE_ID_1, AZ_1);
         DetailedEnvironmentResponse environment = createEnvironment(subnet, false);
 
@@ -514,6 +516,82 @@ public class LoadBalancerConfigServiceTest extends SubnetTest {
             assert result;
             assertEquals("Target groups should not be set on a dry run",
                 0, stack.getInstanceGroups().iterator().next().getTargetGroups().size());
+        });
+    }
+
+    @Test
+    public void testCreateAzurePrivateLoadBalancer() {
+        Stack stack = createAzureStack(StackType.DATALAKE, PRIVATE_ID_1, true);
+        CloudSubnet subnet = getPrivateCloudSubnet(PRIVATE_ID_1, AZ_1);
+        DetailedEnvironmentResponse environment = createEnvironment(subnet, false);
+
+        when(entitlementService.datalakeLoadBalancerEnabled(anyString())).thenReturn(true);
+        when(blueprint.getBlueprintText()).thenReturn(getBlueprintText("input/clouderamanager-knox.bp"));
+        when(subnetSelector.findSubnetById(any(), anyString())).thenReturn(Optional.of(subnet));
+
+        ThreadBasedUserCrnProvider.doAs(USER_CRN, () -> {
+            Set<LoadBalancer> loadBalancers = underTest.createLoadBalancers(stack, environment, false);
+            assertEquals(1, loadBalancers.size());
+            assertEquals(LoadBalancerType.PRIVATE, loadBalancers.iterator().next().getType());
+            InstanceGroup masterInstanceGroup = stack.getInstanceGroups().stream()
+                .filter(ig -> "master".equals(ig.getGroupName()))
+                .findFirst().get();
+            assertEquals(1, masterInstanceGroup.getTargetGroups().size());
+        });
+    }
+
+    @Test
+    public void testCreateAzurePublicLoadBalancer() {
+        Stack stack = createAzureStack(StackType.DATALAKE, PUBLIC_ID_1, false);
+        CloudSubnet subnet = getPublicCloudSubnet(PUBLIC_ID_1, AZ_1);
+        DetailedEnvironmentResponse environment = createEnvironment(subnet, false);
+
+        when(entitlementService.datalakeLoadBalancerEnabled(anyString())).thenReturn(true);
+        when(blueprint.getBlueprintText()).thenReturn(getBlueprintText("input/clouderamanager-knox.bp"));
+        when(subnetSelector.findSubnetById(any(), anyString())).thenReturn(Optional.of(subnet));
+
+        ThreadBasedUserCrnProvider.doAs(USER_CRN, () -> {
+            Set<LoadBalancer> loadBalancers = underTest.createLoadBalancers(stack, environment, false);
+            assertEquals(1, loadBalancers.size());
+            assertEquals(LoadBalancerType.PUBLIC, loadBalancers.iterator().next().getType());
+            InstanceGroup masterInstanceGroup = stack.getInstanceGroups().stream()
+                .filter(ig -> "master".equals(ig.getGroupName()))
+                .findFirst().get();
+            assertEquals(1, masterInstanceGroup.getTargetGroups().size());
+        });
+    }
+
+    @Test
+    public void testCreateAzureEndpointGateway() {
+        Stack stack = createAzureStack(StackType.DATALAKE, PRIVATE_ID_1, true);
+        CloudSubnet subnet = getPrivateCloudSubnet(PRIVATE_ID_1, AZ_1);
+        DetailedEnvironmentResponse environment = createEnvironment(subnet, true);
+
+        when(entitlementService.publicEndpointAccessGatewayEnabled(anyString())).thenReturn(true);
+        when(blueprint.getBlueprintText()).thenReturn(getBlueprintText("input/clouderamanager-knox.bp"));
+        when(subnetSelector.findSubnetById(any(), anyString())).thenReturn(Optional.of(subnet));
+
+        ThreadBasedUserCrnProvider.doAs(USER_CRN, () -> {
+            Set<LoadBalancer> loadBalancers = underTest.createLoadBalancers(stack, environment, false);
+            assertEquals(2, loadBalancers.size());
+            assert loadBalancers.stream().anyMatch(l -> LoadBalancerType.PRIVATE.equals(l.getType()));
+            assert loadBalancers.stream().anyMatch(l -> LoadBalancerType.PUBLIC.equals(l.getType()));
+        });
+    }
+
+    @Test
+    public void testCreateAzureMultipleKnoxInstanceGroups() {
+        Stack stack = createAzureStack(StackType.DATALAKE, PRIVATE_ID_1, true);
+        CloudSubnet subnet = getPrivateCloudSubnet(PRIVATE_ID_1, AZ_1);
+        DetailedEnvironmentResponse environment = createEnvironment(subnet, false);
+
+        when(entitlementService.datalakeLoadBalancerEnabled(anyString())).thenReturn(true);
+        when(blueprint.getBlueprintText()).thenReturn(getBlueprintText("input/clouderamanager-multi-knox.bp"));
+        when(subnetSelector.findSubnetById(any(), anyString())).thenReturn(Optional.of(subnet));
+
+        ThreadBasedUserCrnProvider.doAs(USER_CRN, () -> {
+            Set<LoadBalancer> loadBalancers = underTest.createLoadBalancers(stack, environment, false);
+            assertEquals(0, loadBalancers.size());
         });
     }
 
@@ -542,21 +620,38 @@ public class LoadBalancerConfigServiceTest extends SubnetTest {
         return loadBalancers;
     }
 
-    private Stack createStack(StackType type, String subnetId) {
+    private Stack createAwsStack(StackType type, String subnetId) {
+        return createStack(type, subnetId, AWS, false);
+    }
+
+    private Stack createAzureStack(StackType type, String subnetId, boolean isPrivate) {
+        return createStack(type, subnetId, AZURE, isPrivate);
+    }
+
+    private Stack createStack(StackType type, String subnetId, String cloudPlatform, boolean isPrivate) {
         Cluster cluster = new Cluster();
         cluster.setBlueprint(blueprint);
-        InstanceGroup instanceGroup = new InstanceGroup();
-        instanceGroup.setGroupName("master");
+        Set<InstanceGroup> instanceGroups = new HashSet<>();
+        InstanceGroup instanceGroup1 = new InstanceGroup();
+        instanceGroup1.setGroupName("master");
+        instanceGroups.add(instanceGroup1);
         Stack stack = new Stack();
         stack.setType(type);
         stack.setCluster(cluster);
-        stack.setInstanceGroups(Set.of(instanceGroup));
-        stack.setCloudPlatform(AWS);
+        stack.setInstanceGroups(instanceGroups);
+        stack.setCloudPlatform(cloudPlatform);
         Network network = new Network();
+        Map<String, Object> attributes = new HashMap<>();
         if (StringUtils.isNotEmpty(subnetId)) {
-            Map<String, Object> attributes = Map.of("subnetId", subnetId);
-            network.setAttributes(new Json(attributes));
+            attributes.put("subnetId", subnetId);
         }
+        if (AZURE.equals(cloudPlatform)) {
+            attributes.put("noPublicIp", isPrivate);
+            InstanceGroup instanceGroup2 = new InstanceGroup();
+            instanceGroup2.setGroupName("worker");
+            instanceGroups.add(instanceGroup2);
+        }
+        network.setAttributes(new Json(attributes));
         stack.setNetwork(network);
         return stack;
     }

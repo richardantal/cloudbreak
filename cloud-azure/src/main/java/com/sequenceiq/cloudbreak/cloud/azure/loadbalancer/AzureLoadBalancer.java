@@ -21,6 +21,8 @@ public final class AzureLoadBalancer {
 
     private final LoadBalancerType type;
 
+    private final String instanceGroupName;
+
     public AzureLoadBalancer(CloudLoadBalancer cloudLoadBalancer) {
         rules = cloudLoadBalancer.getPortToTargetGroupMapping()
                 .keySet()
@@ -35,6 +37,12 @@ public final class AzureLoadBalancer {
 
         this.name = getLoadBalancerName(cloudLoadBalancer.getType());
         this.type = cloudLoadBalancer.getType();
+        // we validate there's only one target instance group when the
+        // load balancer object is first initiatlized, so get the first
+        // and only element in the set
+        this.instanceGroupName = cloudLoadBalancer.getPortToTargetGroupMapping().values().stream()
+            .map(groups -> groups.iterator().next().getName())
+            .findFirst().get();
     }
 
     public static String getLoadBalancerName(LoadBalancerType type) {
@@ -55,5 +63,9 @@ public final class AzureLoadBalancer {
 
     public LoadBalancerType getType() {
         return type;
+    }
+
+    public String getInstanceGroupName() {
+        return instanceGroupName;
     }
 }

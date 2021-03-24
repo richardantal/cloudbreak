@@ -1,9 +1,9 @@
 package com.sequenceiq.cloudbreak.cloud.azure;
 
+import org.springframework.stereotype.Component;
+
 import com.microsoft.azure.management.network.NetworkInterface;
 import com.microsoft.azure.management.network.PublicIPAddress;
-import com.sequenceiq.cloudbreak.cloud.azure.client.AzureClient;
-import org.springframework.stereotype.Component;
 
 @Component
 class AzureVmPublicIpProvider {

@@ -5,7 +5,11 @@ import static java.util.stream.Collectors.toList;
 
 import java.io.IOException;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.NoSuchElementException;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 import javax.inject.Inject;
 
@@ -76,6 +80,13 @@ public class AzureTemplateBuilder {
             model.put("credential", azureInstanceCredentialView);
             String rootDiskStorage = azureStorage.getImageStorageName(armCredentialView, cloudContext, cloudStack);
             AzureSecurityView armSecurityView = new AzureSecurityView(cloudStack.getGroups());
+            List<AzureLoadBalancer> azureLoadBalancers;
+            try {
+                azureLoadBalancers = cloudStack.getLoadBalancers().stream().map(AzureLoadBalancer::new).collect(toList());
+            } catch (NoSuchElementException e) {
+                throw new CloudConnectorException("Error creating the Azure load balancer objects. The target Group name may not " +
+                    "have been set correctly. CloudLoadBalancers being converted from: " + cloudStack.getLoadBalancers(), e);
+            }
 
             // needed for pre 1.16.5 templates and Load balancer setup on Medium duty datalakes.
             model.put("existingSubnetName", azureUtils.getCustomSubnetIds(network).stream().findFirst().orElse(""));
@@ -103,7 +114,8 @@ public class AzureTemplateBuilder {
             model.put("userDefinedTags", cloudStack.getTags());
             model.put("acceleratedNetworkEnabled", azureAcceleratedNetworkValidator.validate(armStack));
             model.put("isUpscale", UPSCALE.equals(azureInstanceTemplateOperation));
-            model.put("loadBalancers", cloudStack.getLoadBalancers().stream().map(lb -> new AzureLoadBalancer(lb)).collect(toList()));
+            model.put("loadBalancers", azureLoadBalancers);
+            model.put("loadBalancerMapping", createTargetInstanceGroupMapping(azureLoadBalancers));
             String generatedTemplate = freeMarkerTemplateUtils.processTemplateIntoString(getTemplate(cloudStack), model);
             LOGGER.info("Generated Arm template: {}", generatedTemplate);
             return generatedTemplate;
@@ -142,5 +154,14 @@ public class AzureTemplateBuilder {
 
     private String base64EncodedUserData(String data) {
         return new String(Base64.encodeBase64(String.format("%s", data).getBytes()));
+    }
+
+    private Map<String, List<AzureLoadBalancer>> createTargetInstanceGroupMapping(List<AzureLoadBalancer> azureLoadBalancers) {
+        Set<String> groupNames = azureLoadBalancers.stream().map(AzureLoadBalancer::getInstanceGroupName).collect(Collectors.toSet());
+        return groupNames.stream()
+            .collect(Collectors.toMap(
+                name -> name,
+                name -> azureLoadBalancers.stream().filter(lb -> lb.getInstanceGroupName().equals(name)).collect(Collectors.toList()))
+            );
     }
 }
