@@ -10,7 +10,6 @@ import static org.apache.commons.lang3.StringUtils.substringBefore;
 import java.io.IOException;
 import java.time.Duration;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -31,8 +30,8 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import com.google.common.base.Strings;
-import com.sequenceiq.authorization.service.list.AuthorizationResource;
 import com.sequenceiq.authorization.service.ResourceNameProvider;
+import com.sequenceiq.authorization.service.list.AuthorizationResource;
 import com.sequenceiq.cloudbreak.api.endpoint.v4.common.StackType;
 import com.sequenceiq.cloudbreak.api.endpoint.v4.common.Status;
 import com.sequenceiq.cloudbreak.api.endpoint.v4.dto.NameOrCrn;
@@ -78,7 +77,6 @@ import com.sequenceiq.cloudbreak.domain.stack.Component;
 import com.sequenceiq.cloudbreak.domain.stack.Stack;
 import com.sequenceiq.cloudbreak.domain.stack.StackStatus;
 import com.sequenceiq.cloudbreak.domain.stack.StackValidation;
-import com.sequenceiq.cloudbreak.domain.stack.cluster.DatalakeResources;
 import com.sequenceiq.cloudbreak.domain.stack.instance.InstanceMetaData;
 import com.sequenceiq.cloudbreak.domain.view.StackView;
 import com.sequenceiq.cloudbreak.exception.CloudbreakApiException;
@@ -89,7 +87,6 @@ import com.sequenceiq.cloudbreak.orchestrator.model.OrchestrationCredential;
 import com.sequenceiq.cloudbreak.repository.StackRepository;
 import com.sequenceiq.cloudbreak.service.CloudbreakException;
 import com.sequenceiq.cloudbreak.service.ComponentConfigProviderService;
-import com.sequenceiq.cloudbreak.service.datalake.DatalakeResourcesService;
 import com.sequenceiq.cloudbreak.service.datalake.SdxClientService;
 import com.sequenceiq.cloudbreak.service.decorator.StackResponseDecorator;
 import com.sequenceiq.cloudbreak.service.environment.credential.OpenSshPublicKeyValidator;
@@ -99,6 +96,7 @@ import com.sequenceiq.cloudbreak.service.image.ImageService;
 import com.sequenceiq.cloudbreak.service.image.StatedImage;
 import com.sequenceiq.cloudbreak.service.orchestrator.OrchestratorService;
 import com.sequenceiq.cloudbreak.service.resource.ResourceService;
+import com.sequenceiq.cloudbreak.service.sharedservice.DatalakeService;
 import com.sequenceiq.cloudbreak.service.stack.ShowTerminatedClusterConfigService.ShowTerminatedClustersAfterConfig;
 import com.sequenceiq.cloudbreak.service.stack.connector.adapter.ServiceProviderConnectorAdapter;
 import com.sequenceiq.cloudbreak.service.stackstatus.StackStatusService;
@@ -141,9 +139,6 @@ public class StackService implements ResourceIdProvider, ResourceNameProvider {
 
     @Inject
     private ContainerOrchestratorResolver containerOrchestratorResolver;
-
-    @Inject
-    private DatalakeResourcesService datalakeResourcesService;
 
     @Inject
     private InstanceMetaDataService instanceMetaDataService;
@@ -213,6 +208,9 @@ public class StackService implements ResourceIdProvider, ResourceNameProvider {
 
     @Inject
     private TargetGroupPersistenceService targetGroupPersistenceService;
+
+    @Inject
+    private DatalakeService datalakeService;
 
     @Value("${cb.nginx.port}")
     private Integer nginxPort;
@@ -318,9 +316,11 @@ public class StackService implements ResourceIdProvider, ResourceNameProvider {
         return stackRepository.findEphemeralClusters(datalakeResourceId);
     }
 
+    //TODO CB-11572 pipa
     public Set<StackIdView> findClustersConnectedToDatalakeByDatalakeStackId(Long datalakeStackId) {
-        Optional<DatalakeResources> datalakeResources = datalakeResourcesService.findByDatalakeStackId(datalakeStackId);
-        return datalakeResources.isEmpty() ? Collections.emptySet() : stackRepository.findEphemeralClusters(datalakeResources.get().getId());
+        Long id = datalakeService.getDatalakeResourceId(datalakeStackId);
+        //return datalakeResources.isEmpty() ? Collections.emptySet() : stackRepository.findEphemeralClusters(id);
+        return  stackRepository.findEphemeralClusters(id);
     }
 
     public Stack getByIdWithListsInTransaction(Long id) {

@@ -43,6 +43,7 @@ public class ClouderaManagerDatalakeConfigProvider {
         }
     }
 
+    //TODO CB-11572 :: rds hozzafuzese stack-hez, ha szukseges
     public DatalakeResources collectAndStoreDatalakeResources(Stack datalakeStack, Cluster cluster) {
         try {
             return transactionService.required(() -> {
@@ -89,6 +90,7 @@ public class ClouderaManagerDatalakeConfigProvider {
         datalakeResources.setDatalakeComponentSet(Set.of());
     }
 
+    //TODO CB-11572  jo ez
     private DatalakeResources storeDatalakeResources(DatalakeResources datalakeResources, Workspace workspace) {
         datalakeResources.setWorkspace(workspace);
         return datalakeResourcesService.save(datalakeResources);

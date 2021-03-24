@@ -60,6 +60,7 @@ public class RedbeamsDbServerConfigurer {
             throw new CloudbreakServiceException(message);
         }
 
+        //TODO CB-11572
         RDSConfig rdsConfig = new RDSConfig();
         rdsConfig.setConnectionURL(dbCommon.getJdbcConnectionUrl(resp.getDatabaseVendor(), resp.getHost(), resp.getPort(), Optional.of(dbName)));
         rdsConfig.setSslMode(getSslMode(resp));

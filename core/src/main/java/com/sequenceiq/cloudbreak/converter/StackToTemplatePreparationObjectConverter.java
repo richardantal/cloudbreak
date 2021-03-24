@@ -35,7 +35,6 @@ import com.sequenceiq.cloudbreak.cloud.model.StackTags;
 import com.sequenceiq.cloudbreak.cluster.service.ClusterComponentConfigProvider;
 import com.sequenceiq.cloudbreak.cmtemplate.cloudstorage.CmCloudStorageConfigProvider;
 import com.sequenceiq.cloudbreak.cmtemplate.general.GeneralClusterConfigsProvider;
-import com.sequenceiq.cloudbreak.cmtemplate.sharedservice.SharedServiceConfigsViewProvider;
 import com.sequenceiq.cloudbreak.common.exception.CloudbreakServiceException;
 import com.sequenceiq.cloudbreak.common.mappable.CloudPlatform;
 import com.sequenceiq.cloudbreak.common.service.TransactionService;
@@ -68,6 +67,7 @@ import com.sequenceiq.cloudbreak.service.identitymapping.AzureMockAccountMapping
 import com.sequenceiq.cloudbreak.service.identitymapping.GcpMockAccountMappingService;
 import com.sequenceiq.cloudbreak.service.rdsconfig.RedbeamsDbCertificateProvider;
 import com.sequenceiq.cloudbreak.service.resource.ResourceService;
+import com.sequenceiq.cloudbreak.service.sharedservice.DatalakeService;
 import com.sequenceiq.cloudbreak.tag.AccountTagValidationFailed;
 import com.sequenceiq.cloudbreak.template.BlueprintProcessingException;
 import com.sequenceiq.cloudbreak.template.TemplatePreparationObject;
@@ -108,9 +108,6 @@ public class StackToTemplatePreparationObjectConverter extends AbstractConversio
 
     @Inject
     private GeneralClusterConfigsProvider generalClusterConfigsProvider;
-
-    @Inject
-    private SharedServiceConfigsViewProvider sharedServiceConfigProvider;
 
     @Inject
     private BlueprintViewProvider blueprintViewProvider;
@@ -181,6 +178,9 @@ public class StackToTemplatePreparationObjectConverter extends AbstractConversio
     @Inject
     private TransactionService transactionService;
 
+    @Inject
+    private DatalakeService datalakeService;
+
     @Override
     public TemplatePreparationObject convert(Stack source) {
         try {
@@ -195,7 +195,8 @@ public class StackToTemplatePreparationObjectConverter extends AbstractConversio
             ClouderaManagerRepo cm = clusterComponentConfigProvider.getClouderaManagerRepoDetails(cluster.getId());
             List<ClouderaManagerProduct> products = clusterComponentConfigProvider.getClouderaManagerProductDetails(cluster.getId());
             BaseFileSystemConfigurationsView fileSystemConfigurationView = getFileSystemConfigurationView(credential, source, fileSystem);
-            Optional<DatalakeResources> dataLakeResource = getDataLakeResource(source);
+            //Optional<DatalakeResources> dataLakeResource = getDataLakeResource(source);
+            //TODO CB-11572 pipa
             StackInputs stackInputs = getStackInputs(source);
             Map<String, Object> fixInputs = stackInputs.getFixInputs() == null ? new HashMap<>() : stackInputs.getFixInputs();
             fixInputs.putAll(stackInputs.getDatalakeInputs() == null ? new HashMap<>() : stackInputs.getDatalakeInputs());
@@ -234,7 +235,8 @@ public class StackToTemplatePreparationObjectConverter extends AbstractConversio
                     .withProductDetails(cm, products)
                     .withExposedServices(views)
                     .withDefaultTags(getStackTags(source))
-                    .withSharedServiceConfigs(sharedServiceConfigProvider.createSharedServiceConfigs(source, dataLakeResource))
+                    //.withSharedServiceConfigs(sharedServiceConfigProvider.createSharedServiceConfigs(source, dataLakeResource))
+                    .withSharedServiceConfigs(datalakeService.createSharedServiceConfigs(source))
                     .withStackType(source.getType())
                     .withVirtualGroupView(virtualGroupRequest);
 

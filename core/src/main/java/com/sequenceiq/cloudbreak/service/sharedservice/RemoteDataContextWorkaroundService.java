@@ -38,6 +38,7 @@ public class RemoteDataContextWorkaroundService {
     @Inject
     private MissingResourceNameGenerator nameGenerator;
 
+    //TODO CB-11572 getRdsConfigs -> datalakeServie, v jo ez
     public Set<RDSConfig> prepareRdsConfigs(Cluster requestedCluster, DatalakeResources datalakeResources) {
         Set<RDSConfig> rdsConfigsWithoutHive = requestedCluster.getRdsConfigs();
         Set<RDSConfig> hiveDbfromSdx = datalakeResources.getRdsConfigs()

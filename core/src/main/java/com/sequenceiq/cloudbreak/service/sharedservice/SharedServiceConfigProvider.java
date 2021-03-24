@@ -40,6 +40,7 @@ public class SharedServiceConfigProvider {
     @Inject
     private RemoteDataContextWorkaroundService remoteDataContextWorkaroundService;
 
+    //TODO CB-11572 jo ez
     public Cluster configureCluster(@Nonnull Cluster requestedCluster, User user, Workspace workspace) {
         Objects.requireNonNull(requestedCluster);
         Stack stack = requestedCluster.getStack();
@@ -86,6 +87,7 @@ public class SharedServiceConfigProvider {
         if (datalakeResource.isPresent()) {
             DatalakeResources datalakeResources = datalakeResource.get();
             publicStack.setDatalakeResourceId(datalakeResources.getId());
+            publicStack.setDatalakeCrn(stackService.get(datalakeResources.getDatalakeStackId()).getResourceCrn());
             StackInputs stackInputs = publicStack.getInputs().get(StackInputs.class);
             stackInputs.setDatalakeInputs(new HashMap<>());
             stackInputs.setFixInputs(new HashMap<>());
@@ -104,12 +106,14 @@ public class SharedServiceConfigProvider {
                 ? publicStack.getDatalakeResourceId() : datalakeResources.stream().findFirst().get().getId();
     }
 
+    //TODO CB-11572 - kiemelheto , a datalakeService-be, v jo ez
     private void setupRds(Cluster requestedCluster, DatalakeResources datalakeResources) {
         if (requestedCluster.getRdsConfigs().isEmpty() && datalakeResources.getRdsConfigs() != null) {
             requestedCluster.setRdsConfigs(remoteDataContextWorkaroundService.prepareRdsConfigs(requestedCluster, datalakeResources));
         }
     }
 
+    //TODO CB-11572 - kemelheto a datalakeService-be, v jo ez
     private void setupStoragePath(Cluster requestedCluster, DatalakeResources datalakeResources) {
         FileSystem fileSystem = remoteDataContextWorkaroundService.prepareFilesytem(requestedCluster, datalakeResources);
         requestedCluster.setFileSystem(fileSystem);

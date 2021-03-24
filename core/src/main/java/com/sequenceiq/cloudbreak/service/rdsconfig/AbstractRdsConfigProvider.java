@@ -108,6 +108,7 @@ public abstract class AbstractRdsConfigProvider {
                 newRdsConfig = createNewRdsConfig(stack, cluster, getDb(), getDbUser(), getDbPort());
             }
             rdsConfigs = populateNewRdsConfig(rdsConfigs, stack, cluster, newRdsConfig);
+            rdsConfigs = populateNewRdsConfig(rdsConfigs, stack, cluster, newRdsConfig);
         }
         return rdsConfigs;
     }
@@ -131,6 +132,7 @@ public abstract class AbstractRdsConfigProvider {
      * @param  dbPort  port for database connections (through gateway)
      * @return         RDSConfig object for database
      */
+    //TODO CB-11572
     private RDSConfig createNewRdsConfig(Stack stack, Cluster cluster, String dbName, String dbUserName, String dbPort) {
         RDSConfig rdsConfig = new RDSConfig();
         rdsConfig.setName(getRdsType().name() + '_' + stack.getName() + stack.getId());

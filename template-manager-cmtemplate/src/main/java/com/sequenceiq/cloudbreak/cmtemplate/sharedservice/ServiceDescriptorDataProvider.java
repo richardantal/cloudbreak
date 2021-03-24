@@ -59,4 +59,5 @@ public class ServiceDescriptorDataProvider {
     public String getRangerAdminPassword(DatalakeResources datalakeResources) {
         return getServiceRelatedSecret(datalakeResources, RANGER, RANGER_PASSWORD);
     }
+    //TODO CB-11572 pipa, not in use could be deleted
 }

@@ -64,6 +64,7 @@ public class DatalakeResources implements ProvisionEntity, WorkspaceAwareResourc
 
     @ManyToMany(cascade = CascadeType.MERGE)
     private Set<RDSConfig> rdsConfigs;
+    //TODO CB-11572
 
     private String environmentCrn;
 

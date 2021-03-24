@@ -24,6 +24,7 @@ public class SharedServiceConfigsViewProvider {
     @Inject
     private ServiceDescriptorDataProvider serviceDescriptorDataProvider;
 
+    //TODO CB-11572 pipa, not in use, could be delted
     public SharedServiceConfigsView createSharedServiceConfigs(Blueprint blueprint, String ambariPassword,
             Optional<DatalakeResources> datalakeResources) {
         SharedServiceConfigsView sharedServiceConfigsView = new SharedServiceConfigsView();
