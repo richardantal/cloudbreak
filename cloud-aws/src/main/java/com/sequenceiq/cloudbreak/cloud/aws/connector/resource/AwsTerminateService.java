@@ -97,8 +97,8 @@ public class AwsTerminateService {
         DescribeStacksRequest describeStacksRequest = new DescribeStacksRequest().withStackName(cFStackName);
         try {
             retryService.testWith2SecDelayMax15Times(() -> isStackExist(amazonCloudFormationClient, cFStackName, describeStacksRequest));
-        } catch (ActionFailedException ignored) {
-            LOGGER.debug("Stack not found with name: {}", cFStackName);
+        } catch (ActionFailedException | AmazonServiceException e) {
+            LOGGER.debug("Stack not found with name: {}, error: {}", cFStackName, e.getMessage());
             return;
         }
 
@@ -120,10 +120,10 @@ public class AwsTerminateService {
         try {
             cfRetryClient.describeStacks(describeStacksRequest);
         } catch (AmazonServiceException e) {
-            if (!e.getErrorMessage().contains(cFStackName + " does not exist")) {
+            if (e.getErrorMessage().contains(cFStackName + " does not exist")) {
                 throw e;
             }
-            throw new ActionFailedException("Stack not exists");
+            throw new ActionFailedException(e.getMessage());
         }
         return Boolean.TRUE;
     }
