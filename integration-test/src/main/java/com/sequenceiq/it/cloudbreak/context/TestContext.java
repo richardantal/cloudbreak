@@ -1143,6 +1143,10 @@ public abstract class TestContext implements ApplicationContextAware {
         return cloudProvider;
     }
 
+    public Tracer getTracer() {
+        return tracer;
+    }
+
     @Override
     public String toString() {
         return getClass().getSimpleName() + "{clients: " + clients + ", entities: " + resources + "}";

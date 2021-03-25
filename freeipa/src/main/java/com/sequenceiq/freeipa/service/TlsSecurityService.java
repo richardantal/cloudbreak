@@ -17,6 +17,7 @@ import com.sequenceiq.cloudbreak.clusterproxy.ClusterProxyConfiguration;
 import com.sequenceiq.cloudbreak.orchestrator.model.GatewayConfig;
 import com.sequenceiq.cloudbreak.util.PasswordUtil;
 import com.sequenceiq.freeipa.api.v1.freeipa.stack.model.common.instance.InstanceMetadataType;
+import com.sequenceiq.freeipa.client.FreeIpaClientFactoryUtil;
 import com.sequenceiq.freeipa.entity.InstanceMetaData;
 import com.sequenceiq.freeipa.entity.SaltSecurityConfig;
 import com.sequenceiq.freeipa.entity.SecurityConfig;
@@ -148,7 +149,7 @@ public class TlsSecurityService {
     public HttpClientConfig buildTLSClientConfig(Stack stack, String apiAddress, InstanceMetaData gateway) {
         SecurityConfig securityConfig = securityConfigService.findOneByStack(stack);
         if (securityConfig == null) {
-            return new HttpClientConfig(apiAddress);
+            return FreeIpaClientFactoryUtil.getHttpClientConfig(apiAddress);
         } else {
             String serverCert = gateway == null ? null : gateway.getServerCert() == null ? null : new String(decodeBase64(gateway.getServerCert()));
             String clientCertB64 = securityConfig.getClientCert();

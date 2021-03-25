@@ -1,4 +1,4 @@
-package com.sequenceiq.freeipa.util;
+package com.sequenceiq.freeipa.client.util;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;

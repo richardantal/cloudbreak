@@ -1,4 +1,4 @@
-package com.sequenceiq.freeipa.util;
+package com.sequenceiq.freeipa.client.util;
 
 import java.io.Serializable;
 import java.util.Comparator;

@@ -17,6 +17,7 @@ import com.sequenceiq.it.cloudbreak.action.freeipa.FreeIpaRepairAction;
 import com.sequenceiq.it.cloudbreak.action.freeipa.FreeIpaStartAction;
 import com.sequenceiq.it.cloudbreak.action.freeipa.FreeIpaStopAction;
 import com.sequenceiq.it.cloudbreak.action.freeipa.FreeIpaSynchronizeAllUsersAction;
+import com.sequenceiq.it.cloudbreak.action.freeipa.FreeipaFindGroupAction;
 import com.sequenceiq.it.cloudbreak.action.freeipa.FreeipaUsedImagesAction;
 import com.sequenceiq.it.cloudbreak.dto.freeipa.FreeIpaChildEnvironmentTestDto;
 import com.sequenceiq.it.cloudbreak.dto.freeipa.FreeIpaDiagnosticsTestDto;
@@ -78,4 +79,6 @@ public class FreeIpaTestClient {
     public Action<FreeipaUsedImagesTestDto, FreeIpaClient> usedImages() {
         return new FreeipaUsedImagesAction();
     }
+
+    public Action<FreeIpaTestDto, FreeIpaClient> findGroup() { return new FreeipaFindGroupAction(); }
 }

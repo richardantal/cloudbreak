@@ -1,5 +1,7 @@
 package com.sequenceiq.freeipa.service.freeipa;
 
+import static com.sequenceiq.freeipa.client.FreeIpaClientFactoryUtil.ADMIN_USER;
+
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -26,6 +28,7 @@ import com.sequenceiq.freeipa.client.ClusterProxyErrorRpcListener;
 import com.sequenceiq.freeipa.client.FreeIpaClient;
 import com.sequenceiq.freeipa.client.FreeIpaClientBuilder;
 import com.sequenceiq.freeipa.client.FreeIpaClientException;
+import com.sequenceiq.freeipa.client.FreeIpaClientFactoryUtil;
 import com.sequenceiq.freeipa.client.FreeIpaHostNotAvailableException;
 import com.sequenceiq.freeipa.client.InvalidFreeIpaStateException;
 import com.sequenceiq.freeipa.client.RetryableFreeIpaClientException;
@@ -44,8 +47,6 @@ import io.opentracing.Tracer;
 public class FreeIpaClientFactory {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(FreeIpaClientFactory.class);
-
-    private static final String ADMIN_USER = "admin";
 
     private static final Map<String, String> ADDITIONAL_CLUSTER_PROXY_HEADERS = Map.of(
             "Proxy-Ignore-Auth", "true",
@@ -226,7 +227,8 @@ public class FreeIpaClientFactory {
                 stack, instanceMetaData.getPublicIpWrapper(), instanceMetaData);
         FreeIpa freeIpa = freeIpaService.findByStack(stack);
         int gatewayPort = Optional.ofNullable(stack.getGatewayport()).orElse(ServiceFamilies.GATEWAY.getDefaultPort());
-        return new FreeIpaClientBuilder(ADMIN_USER, freeIpa.getAdminPassword(), httpClientConfig, gatewayPort, instanceMetaData.getDiscoveryFQDN(), tracer);
+        return FreeIpaClientFactoryUtil.getDirectFreeipaClientBuilder(freeIpa.getAdminPassword(), httpClientConfig, gatewayPort,
+                instanceMetaData.getDiscoveryFQDN(), tracer);
     }
 
     private InvalidFreeIpaStateException createFreeIpaStateIsInvalidException(Status stackStatus) {

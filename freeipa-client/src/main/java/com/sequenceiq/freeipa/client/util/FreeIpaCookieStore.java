@@ -1,4 +1,4 @@
-package com.sequenceiq.freeipa.util;
+package com.sequenceiq.freeipa.client.util;
 
 import java.util.ArrayList;
 import java.util.Date;

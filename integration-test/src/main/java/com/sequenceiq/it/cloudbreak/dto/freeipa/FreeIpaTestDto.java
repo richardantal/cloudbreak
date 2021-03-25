@@ -21,6 +21,8 @@ import com.sequenceiq.cloudbreak.api.endpoint.v4.stacks.request.authentication.S
 import com.sequenceiq.cloudbreak.api.endpoint.v4.stacks.request.environment.placement.PlacementSettingsV4Request;
 import com.sequenceiq.cloudbreak.api.endpoint.v4.stacks.request.instancegroup.InstanceGroupV4Request;
 import com.sequenceiq.cloudbreak.api.endpoint.v4.stacks.request.network.NetworkV4Request;
+import com.sequenceiq.cloudbreak.ccm.endpoint.ServiceFamilies;
+import com.sequenceiq.cloudbreak.client.HttpClientConfig;
 import com.sequenceiq.freeipa.api.v1.freeipa.stack.model.FreeIpaServerRequest;
 import com.sequenceiq.freeipa.api.v1.freeipa.stack.model.common.Status;
 import com.sequenceiq.freeipa.api.v1.freeipa.stack.model.common.image.ImageSettingsRequest;
@@ -41,6 +43,8 @@ import com.sequenceiq.freeipa.api.v1.freeipa.stack.model.common.security.StackAu
 import com.sequenceiq.freeipa.api.v1.freeipa.stack.model.create.CreateFreeIpaRequest;
 import com.sequenceiq.freeipa.api.v1.freeipa.stack.model.describe.DescribeFreeIpaResponse;
 import com.sequenceiq.freeipa.api.v1.freeipa.stack.model.list.ListFreeIpaResponse;
+import com.sequenceiq.freeipa.client.FreeIpaClientBuilder;
+import com.sequenceiq.freeipa.client.FreeIpaClientFactoryUtil;
 import com.sequenceiq.it.cloudbreak.FreeIpaClient;
 import com.sequenceiq.it.cloudbreak.MicroserviceClient;
 import com.sequenceiq.it.cloudbreak.Prototype;
@@ -289,6 +293,19 @@ public class FreeIpaTestDto extends AbstractFreeIpaTestDto<CreateFreeIpaRequest,
     public FreeIpaTestDto withGatewayPort(Integer port) {
         getRequest().setGatewayPort(port);
         return this;
+    }
+
+    public com.sequenceiq.freeipa.client.FreeIpaClient createIpaServerClient() throws Exception {
+        DescribeFreeIpaResponse freeIpaResponse = getResponse();
+        String freeipaIp = freeIpaResponse.getFreeIpa().getServerIp().iterator().next();
+        String freeipaHost = freeIpaResponse.getFreeIpa().getFreeIpaHost();
+        Integer gatewayPort = Optional.ofNullable(freeIpaResponse.getFreeIpa().getFreeIpaPort()).
+                orElse(ServiceFamilies.GATEWAY.getDefaultPort());
+        String adminPassword = getRequest().getFreeIpa().getAdminPassword();
+        HttpClientConfig httpClientConfig = FreeIpaClientFactoryUtil.getHttpClientConfig(freeipaIp);
+        FreeIpaClientBuilder directFreeipaClientBuilder = FreeIpaClientFactoryUtil.getDirectFreeipaClientBuilder(adminPassword, httpClientConfig,
+                gatewayPort, freeipaHost, getTestContext().getTracer());
+        return directFreeipaClientBuilder.build(true);
     }
 
     @Override

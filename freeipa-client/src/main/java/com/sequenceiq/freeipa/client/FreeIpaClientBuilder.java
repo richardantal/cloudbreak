@@ -55,7 +55,7 @@ import com.sequenceiq.cloudbreak.util.HostUtil;
 import com.sequenceiq.freeipa.client.auth.InvalidPasswordException;
 import com.sequenceiq.freeipa.client.auth.InvalidUserOrRealmException;
 import com.sequenceiq.freeipa.client.auth.PasswordExpiredException;
-import com.sequenceiq.freeipa.util.FreeIpaCookieStore;
+import com.sequenceiq.freeipa.client.util.FreeIpaCookieStore;
 
 import io.opentracing.Tracer;
 

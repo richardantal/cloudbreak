@@ -1,4 +1,4 @@
-package com.sequenceiq.freeipa.util;
+package com.sequenceiq.freeipa.client.util;
 
 import static org.junit.Assert.assertTrue;
 import static org.mockito.Mockito.mock;
@@ -12,6 +12,8 @@ import org.junit.Before;
 import org.junit.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.junit.jupiter.MockitoExtension;
+
+import com.sequenceiq.freeipa.client.util.CookieComparator;
 
 @ExtendWith(MockitoExtension.class)
 public class CookieComparatorTest {

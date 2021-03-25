@@ -48,6 +48,7 @@ public class FreeIpaTests extends AbstractE2ETest {
                 .withTelemetry("telemetry")
                 .when(freeIpaTestClient.create(), key(freeIpa))
                 .await(FREEIPA_AVAILABLE)
+                .when(freeIpaTestClient.findGroup())
                 .when(freeIpaTestClient.stop())
                 .await(Status.STOPPED)
                 .when(freeIpaTestClient.start())
